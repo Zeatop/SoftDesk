@@ -4,18 +4,19 @@ from django.contrib.auth import models as modelsAuth
 from Users.models import CustomUser
 
 class Project(models.Model):
-    devChoice = [
+    DEVTYPE = [
         ("Backend", "Backend"),
         ("Frontend", "Frontend"),
     ]
-    deviceChoice = [
+    DEVICE = [
         ("iOS", "iOS"),
         ("Android", "Android"),
     ]
 
+    name = models.CharField(max_length=25, null=True)
     description = models.CharField(max_length=200, null=False)
-    devType = models.CharField(max_length=50, null=False, choices=devChoice)
-    deviceType = models.CharField(max_length=50, null=False, choices=deviceChoice)
+    devType = models.CharField(max_length=50, null=False, choices=DEVTYPE)
+    deviceType = models.CharField(max_length=50, null=False, choices=DEVICE)
     contributors = models.ManyToManyField(
         CustomUser,
         through='Contributor',
@@ -24,7 +25,7 @@ class Project(models.Model):
     )
 
 class Contributor(models.Model):
-    roleChoices=[
+    ROLE=[
             ('owner', 'Project Owner'),
             ('contributor', 'Contributor'),
         ]
@@ -32,32 +33,31 @@ class Contributor(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     date_joined = models.DateTimeField(auto_now_add=True, null=True)
-    role = models.CharField(max_length=30, choices=roleChoices, default='contributor')
-
+    role = models.CharField(max_length=30, choices=ROLE, default='contributor')
     
     class Meta:
         unique_together = ('project', 'user')  # Pour éviter les doublons
 
 class Issue(models.Model):
-    priorityChoice = [
+    PRORITY = [
         ("Low", "Low"),
         ("Med", "Med"),
         ("High", "High")
     ]
-    baliseChoice = [
+    TAG = [
         ("Fix", "Fix"),
         ("Task", "Task"),
         ("Upgrade", "Upgrade")
     ]
-    stateChoice = [
+    STAT = [
         ("To do", "To do"),
         ("In progress", "In progress"),
         ("Finished", "Finished")
     ]
 
-    priority = models.CharField(max_length=50, null=False, choices=priorityChoice)
-    balise = models.CharField(max_length=50, null=False, choices=baliseChoice)
-    state = models.CharField(max_length=50, null=False, choices=stateChoice, default="To do")
+    priority = models.CharField(max_length=50, null=False, choices=PRORITY)
+    balise = models.CharField(max_length=50, null=False, choices=TAG)
+    state = models.CharField(max_length=50, null=False, choices=STAT, default="To do")
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
 

@@ -4,7 +4,7 @@ from .models import Project, Contributor, Issue, Comment
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ['id', 'description', 'devType', 'deviceType']
+        fields = ['id', 'name', 'description', 'devType', 'deviceType']
 
 class IssueSerializer(serializers.ModelSerializer):
     class Meta: 
@@ -15,3 +15,8 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta: 
         model = Comment
         fields = ['id', 'issue', 'body', 'author']
+
+class ContributorSerializer(serializers.ModelSerializer):
+    class Meta: 
+        model = Contributor
+        fields = ['id', 'project', 'user', 'date_joined', 'role' ]
