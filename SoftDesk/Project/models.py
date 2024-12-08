@@ -49,19 +49,20 @@ class Issue(models.Model):
         ("Task", "Task"),
         ("Upgrade", "Upgrade")
     ]
-    STAT = [
+    STATE = [
         ("To do", "To do"),
         ("In progress", "In progress"),
         ("Finished", "Finished")
     ]
 
+    name = models.CharField(max_length=25, null=True)
     priority = models.CharField(max_length=50, null=False, choices=PRORITY)
     balise = models.CharField(max_length=50, null=False, choices=TAG)
-    state = models.CharField(max_length=50, null=False, choices=STAT, default="To do")
+    state = models.CharField(max_length=50, null=False, choices=STATE, default="To do")
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    author = models.ForeignKey(Contributor, on_delete=models.CASCADE)
 
 class Comment(models.Model):
     issue = models.ForeignKey(Issue, on_delete=models.CASCADE)
     body = models.CharField(max_length=200, null=False)
-    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    author = models.ForeignKey(Contributor, on_delete=models.CASCADE)
