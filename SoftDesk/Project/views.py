@@ -5,9 +5,9 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from Project.models import Contributor, Project, Issue
+from Project.models import Contributor, Project, Issue, Comment
 from Users.models import CustomUser as User
-from Project.serializers import ProjectSerializer, ContributorSerializer, IssueSerializer
+from Project.serializers import ProjectSerializer, ContributorSerializer, IssueSerializer, CommentSerializer
 
 
 class Home(APIView):
@@ -24,57 +24,27 @@ class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
 
     def perform_create(self, serializer):       
-        if serializer.is_valid():
-                project = serializer.save()
-                Contributor.objects.create(
-                    project=project,
-                    user=self.request.user,
-                    role='owner'
-                )
-                return Response({
-                    'message': 'Projet créé.',
-                    'data': serializer.data
-                }, status=status.HTTP_201_CREATED)
-        return Response({
-        'message': 'Projet non créé, données invalides.',
-        'errors': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
-        
+        project = serializer.save()
+        Contributor.objects.create(
+            project=project,
+            user=self.request.user,
+            role='owner'
+        )
+
     @action(detail=True, methods=['post'])
-    def join(self, request, pk=None):
+    def join(self, request, *args, **kwargs):
         """
         Permet à un utilisateur authentifié de rejoindre un projet spécifique.
-        accessible via POST /projects/{id}/join/
+        accessible via POST /projects/join/
         """
-        project = self.get_object()  # Récupère le projet via son ID (pk)
-
-        # Vérifie si l'utilisateur est déjà contributeur
-        if Contributor.objects.filter(project=project, user=request.user).exists():
-            return Response({
-                'message': 'Vous êtes déjà contributeur de ce projet.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Crée un nouveau contributeur
-            contributor = Contributor.objects.create(
-                project=project,
-                user=request.user,
-                role='contributor'  # Par défaut, on assigne le rôle contributeur
-            )
+        user = request.user
+        project = self.get_object()
+        serializer = ContributorSerializer(contributor)
+        seriliazer.is_valid(raise_exception=True)
+        project.join(user)
+        return self.retrieve(request, *args, **kwargs)
             
-            # Sérialise le contributeur pour la réponse
-            serializer = ContributorSerializer(contributor)
             
-            return Response({
-                'message': 'Vous avez rejoint le projet avec succès.',
-                'data': serializer.data
-            }, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            return Response({
-                'message': 'Une erreur est survenue lors de l\'ajout au projet.',
-                'error': str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
 
 class IssueViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -82,25 +52,29 @@ class IssueViewSet(viewsets.ModelViewSet):
     serializer_class = IssueSerializer
 
     def perform_create(self, serializer):
-        
+        #is_valide
         project = serializer.validated_data['project']
-        try:
-            author = Contributor.objects.get(
-                project=project,
-                user=self.request.user
-            )
-            # Sauvegarder l'issue avec l'auteur trouvé automatiquement
-            serializer.save(author=author)
-            return Response({
-                'message': 'Issue créée.',
-                'data': serializer.data
-            }, status=status.HTTP_201_CREATED)
-        except Contributor.DoesNotExist:
-            return Response({
-                'message': 'Vous devez être contributeur du projet pour créer une issue.',
-            }, status=status.HTTP_403_FORBIDDEN)
+        author = Contributor.objects.get(
+        project=project,
+        user=self.request.user
+        )
+        serializer.save(author=author)
+        
     
 
 
 class CommentViewSet(viewsets.ModelViewSet):
-     pass
+    permission_classes = [IsAuthenticated]
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+
+    def perform_create(self, serializer):
+        issue = serializer.validated_data['issue']
+        project = issue.project
+        author = Contributor.objects.get(
+                project=project,
+                user=self.request.user
+            )
+        serializer.save(author=author)
+
+

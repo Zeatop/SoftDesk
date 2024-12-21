@@ -9,16 +9,23 @@ class ProjectSerializer(serializers.ModelSerializer):
         model = Project
         fields = ['id', 'name', 'description', 'devType', 'deviceType']
 
-    def validate_name(self, value):
-        if Project.objects.filter(name=value).exists():
+    def validate_name(self, data):
+        if Project.objects.filter(name=data.name).exists():
             raise serializers.ValidationError("Un projet porte déjà ce nom")
-        return value
+        return data
 
 
 class IssueSerializer(serializers.ModelSerializer):
+    author = serializers.PrimaryKeyRelatedField(read_only=True)
+    #Permet de faire le lien entre l'ID du projet et son name
+    project = serializers.SlugRelatedField(
+        queryset=Project.objects.all(),
+        slug_field='name'
+    )
+
     class Meta: 
         model = Issue
-        fields = ['id', 'name', 'priority', 'balise', 'state', 'project', ]
+        fields = ['id', 'name', 'priority', 'balise', 'state', 'project', "author" ]
     
     def validate(self, data):
         """
@@ -26,41 +33,44 @@ class IssueSerializer(serializers.ModelSerializer):
         """
         project = data.get('project')
         issue = data.get('name')
-        author = data.get('author')
         request = self.context.get('request')
+
+        if not request or not request.user:
+            raise serializers.ValidationError("Requête invalide")
         
-        if request and request.user:
-            # Vérifie si l'utilisateur actuel est contributeur
-            if not Contributor.objects.filter(
-                project=project,
-                user=request.user
-            ).exists():
-                raise serializers.ValidationError(
-                    "Vous devez être contributeur de ce projet pour créer une issue"
-                )
-        
-            return data
-        
+        try:
+            contributor = Contributor.objects.get(
+            project=project,
+            user=request.user
+            )
+        except Contributor.DoesNotExist:
+            raise serializers.ValidationError(
+            "Vous devez être contributeur pour créer une issue"
+        )
+    
         if self.instance:
-            is_author = (author == self.instance.author)
-            is_owner = project.contributors.filter(user=author.user, role='owner').exists()
+            is_author = (self.instance.author.user == request.user)
+            is_owner = (contributor.role == 'owner')
             
             if not (is_author or is_owner):
                 raise serializers.ValidationError(
                     "Seuls l'owner du projet et l'auteur de l'issue peuvent la modifier"
                 )
         else:
-            if Issue.objects.filter(name=issue).exists():
+            if Issue.objects.filter(project=project, name=issue).exists():
                 raise serializers.ValidationError(
-                    "Une issue porte déjà ce nom"
+                    "Une issue porte déjà ce nom dans ce projet"
                 )
 
         return data
-    
-    
+     
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    issue = serializers.SlugRelatedField(
+        queryset=Issue.objects.all(),
+        slug_field='name'
+    )
     class Meta: 
         model = Comment
         fields = ['id', 'issue', 'body', 'author']
@@ -71,19 +81,35 @@ class CommentSerializer(serializers.ModelSerializer):
         """
         issue = data.get('issue')
         project = issue.project
-        author = data.get('author')
-        
-        if author not in project.contributors.all():
+        request = self.context.get('request')
+        user = request.user
+
+        if not request or not request.user:
+         raise serializers.ValidationError("Requête invalide")
+        try:
+            Contributor.objects.get(
+                user=user,
+                project=project
+            )
+        except Contributor.DoesNotExist:
             raise serializers.ValidationError(
-                "L'auteur doit être contributeur de ce projet spécifique"
+                "L'auteur doit être contributeur du projet"
             )
         
+         # Pour les modifications
         if self.instance:
-            is_author =(author == self.instance.author)
-            if not is_author:
+            author = self.instance.author
+            contributor = Contributor.objects.get(
+                project=project,
+                user=request.user
+            )
+            
+            is_author = (author == contributor)
+            if not (is_author):
                 raise serializers.ValidationError(
-                    "Seul l'auteur du commentaire peut modifier le commentaire"
+                    "Seul l'auteur du commentaire du projet peut modifier le commentaire"
                 )
+
         return data
     
 
@@ -91,3 +117,10 @@ class ContributorSerializer(serializers.ModelSerializer):
     class Meta: 
         model = Contributor
         fields = ['id', 'project', 'user', 'date_joined', 'role' ]
+
+    def validate(self, data):
+        if Contributor.objects.filter(user=data.user, projet=data.projet).exists():
+            raise serializers.ValidationError("Un projet porte déjà ce nom")
+        if not Project.objects.filter(pk=data.project).exists:
+            raise serializers.ValidationError("Le projet n'existe pas")
+        return data

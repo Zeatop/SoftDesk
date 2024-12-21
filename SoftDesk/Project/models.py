@@ -2,6 +2,9 @@ from datetime import datetime
 from django.db import models
 from django.contrib.auth import models as modelsAuth
 from Users.models import CustomUser
+from rest_framework.response import Response
+from rest_framework import status
+
 
 class Project(models.Model):
     DEVTYPE = [
@@ -23,6 +26,14 @@ class Project(models.Model):
         through_fields=('project', 'user'),
         related_name='projects'
     )
+    
+    def join(self, user):
+        return Contributor.objects.create(
+            project=self,
+            user=user,
+            role='contributor'  # Par défaut, on assigne le rôle contributeur
+        )   
+    
 
 class Contributor(models.Model):
     ROLE=[
@@ -37,6 +48,7 @@ class Contributor(models.Model):
     
     class Meta:
         unique_together = ('project', 'user')  # Pour éviter les doublons
+
 
 class Issue(models.Model):
     PRORITY = [
