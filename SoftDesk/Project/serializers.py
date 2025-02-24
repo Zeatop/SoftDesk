@@ -10,7 +10,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'devType', 'deviceType']
 
     def validate_name(self, data):
-        if Project.objects.filter(name=data.name).exists():
+        if Project.objects.filter(name=data).exists():
             raise serializers.ValidationError("Un projet porte déjà ce nom")
         return data
 

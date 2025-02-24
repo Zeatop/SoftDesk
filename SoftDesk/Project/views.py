@@ -39,10 +39,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """
         user = request.user
         project = self.get_object()
+        if Contributor.objects.filter(project=project, user=user).exists():
+            return Response({"detail": "Vous êtes déjà contributeur de ce projet"}, 
+                        status=status.HTTP_400_BAD_REQUEST)
+        
+        # Utiliser directement la méthode join du modèle Project
+        contributor = project.join(user)
+        
+        # Sérialiser le résultat
         serializer = ContributorSerializer(contributor)
-        seriliazer.is_valid(raise_exception=True)
-        project.join(user)
-        return self.retrieve(request, *args, **kwargs)
+        
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
             
             
 
