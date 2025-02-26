@@ -67,10 +67,9 @@ class IssueSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    issue = serializers.SlugRelatedField(
-        queryset=Issue.objects.all(),
-        slug_field='name'
-    )
+
+    author = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta: 
         model = Comment
         fields = ['id', 'issue', 'body', 'author']
